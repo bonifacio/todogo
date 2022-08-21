@@ -4,13 +4,17 @@ import (
 	"net/http"
 
 	"github.com/bonifacio/todogo/models"
-	"github.com/bonifacio/todogo/services"
 	"github.com/gin-gonic/gin"
 )
 
-type TodoHandler struct {
-	service services.TodoService
-}
+type (
+	TodoService interface {
+		Create(todo models.Todo) *models.Todo
+	}
+	TodoHandler struct {
+		service TodoService
+	}
+)
 
 func (th TodoHandler) CreateTodo(c *gin.Context) {
 
@@ -27,10 +31,21 @@ func (th TodoHandler) CreateTodo(c *gin.Context) {
 	c.JSON(http.StatusCreated, todo)
 }
 
-func ConfigureTodoHandler(engine *gin.Engine, handler *TodoHandler) {
-	engine.POST("/todo", handler.CreateTodo)
+func (th TodoHandler) Upload(c *gin.Context) {
+	fileHeader, _ := c.FormFile("file")
+	file, _ := fileHeader.Open()
+	b := make([]byte, fileHeader.Size)
+	_, _ = file.Read(b)
+	c.JSON(http.StatusOK, gin.H{
+		"content": string(b),
+	})
 }
 
-func NewTodoHandler(service services.TodoService) *TodoHandler {
+func ConfigureTodoHandler(engine *gin.Engine, handler *TodoHandler) {
+	engine.POST("/todo", handler.CreateTodo)
+	engine.POST("/todo/:id/file", handler.Upload)
+}
+
+func NewTodoHandler(service TodoService) *TodoHandler {
 	return &TodoHandler{service}
 }
